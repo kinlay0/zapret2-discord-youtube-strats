@@ -23,15 +23,17 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --lua-init=@"%LUA%zapret-auto.lua" ^
 
 --blob=tls_google:@"%BIN%tls_clienthello_www_google_com.bin" ^
---blob=tls_onetrust:@"%BIN%tls_clienthello_max_ru.bin" ^
 --blob=quic_google:@"%BIN%quic_initial_www_google_com.bin" ^
+--blob=tls_onetrust:@"%BIN%tls_clienthello_max_ru.bin" ^
 --blob=quic_dbankcloud:@"%BIN%quic_initial_dbankcloud_ru.bin" ^
 --blob=stun:@"%BIN%stun.bin" ^
+--blob=stun2:@"%BIN%stun2.bin" ^
 --blob=tls_4pda:@"%BIN%tls_clienthello_4pda_to.bin" ^
 --blob=quic_4pda:@"%BIN%quic_initial_4pda.to.bin" ^
+--blob=tls_5ka=@"%BIN%tls_clienthello_5ka_ru.bin" ^
+--blob=quic_5ka=@"%BIN%quic_initial_5ka_ru.bin" ^
 --blob=quic_steam:@"%BIN%quic_initial_steamcommunity_com.bin" ^
 --blob=quic_tencent:@"%BIN%quic_initial_tencent_com.bin" ^
---blob=stun2:@"%BIN%stun2.bin" ^
 --blob=rutube:@"%BIN%quic_initial_rutube_ru.bin" ^
 --blob=active_discord:@"%BIN%ACTIVE_DISCORD_UDP.bin" ^
 --blob=active_game:@"%BIN%ACTIVE_GAME_UDP.bin" ^
@@ -52,7 +54,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --filter-udp=19294-19344,50000-50100 ^
 --filter-l7=discord,stun ^
 --payload=discord_ip_discovery,stun ^
---lua-desync=fake:blob=rutube:repeats=6 ^
+--lua-desync=fake:blob=active_discord:repeats=6 ^
 --new ^
 
 --name="discord media" ^
@@ -126,4 +128,4 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --ipset-exclude="%LISTS%ipset-exclude-user.txt" ^
 --out-range=-n4 ^
 --payload=all ^
---lua-desync=fake:blob=quic_dbankcloud:repeats=4:payload=all ^
+--lua-desync=fake:blob=active_game:repeats=4:payload=all ^
