@@ -88,7 +88,7 @@ echo      10. Check for Updates
 echo.
 echo   :: TOOLS
 echo      11. Run Diagnostics (may not work properly)
-echo      12. Run Tests (not working)
+echo      12. Run Tests
 echo.
 echo   ----------------------------------------
 echo      0. Exit

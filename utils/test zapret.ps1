@@ -550,13 +550,13 @@ if (-not $batFiles -or $batFiles.Count -eq 0) {
 
 # Stop winws
 function Stop-Zapret {
-    Get-Process -Name "winws" -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process -Name "winws*" -ErrorAction SilentlyContinue | Stop-Process -Force
 }
 
 # Capture/restore running winws instances to return user ipset/config
 function Get-WinwsSnapshot {
     try {
-        return Get-CimInstance Win32_Process -Filter "Name='winws.exe'" |
+        return Get-CimInstance Win32_Process -Filter "Name LIKE 'winws%.exe'" |
             Select-Object ProcessId, CommandLine, ExecutablePath
     } catch {
         return @()
