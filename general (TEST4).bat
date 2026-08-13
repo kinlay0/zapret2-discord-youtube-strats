@@ -30,8 +30,8 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --blob=stun2:@"%BIN%stun2.bin" ^
 --blob=tls_4pda:@"%BIN%tls_clienthello_4pda_to.bin" ^
 --blob=quic_4pda:@"%BIN%quic_initial_4pda.to.bin" ^
---blob=tls_5ka=@"%BIN%tls_clienthello_5ka_ru.bin" ^
---blob=quic_5ka=@"%BIN%quic_initial_5ka_ru.bin" ^
+--blob=tls_5ka:@"%BIN%tls_clienthello_5ka_ru.bin" ^
+--blob=quic_5ka:@"%BIN%quic_initial_5ka_ru.bin" ^
 --blob=quic_steam:@"%BIN%quic_initial_steamcommunity_com.bin" ^
 --blob=quic_tencent:@"%BIN%quic_initial_tencent_com.bin" ^
 --blob=rutube:@"%BIN%quic_initial_rutube_ru.bin" ^
