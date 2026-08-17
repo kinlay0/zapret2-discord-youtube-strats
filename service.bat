@@ -275,10 +275,12 @@ set "capture=0"
 set "mergeargs=0"
 set "BIN=%~dp0bin\"
 set "LISTS=%~dp0lists\"
+set "LUA=%~dp0lua\"
 set QUOTE="
 
 for /f "tokens=*" %%a in ('type "!selectedFile!"') do (
     set "line=%%a"
+    if "!line:~-1!"=="^" set "line=!line:~0,-1!"
     call set "line=%%line:^!=EXCL_MARK%%"
     call set "line=!line!"
 
@@ -290,52 +292,9 @@ for /f "tokens=*" %%a in ('type "!selectedFile!"') do (
     if !capture!==1 (
         if not defined args (
             set "line=!line:*winws2.exe"=!"
+            set "args= --chdir"
         )
-
-        set "temp_args="
-        for %%i in (!line!) do (
-            set "arg=%%i"
-
-            if not "!arg!"=="^" if not "!arg!"=="^^" (
-                if "!arg:~0,2!" EQU "--" if not !mergeargs!==0 (
-                    set "mergeargs=0"
-                )
-
-                if "!arg:~0,1!" EQU "!QUOTE!" (
-                    set "arg=!arg:~1,-1!"
-
-                    echo !arg! | findstr ":" >nul
-                    if !errorlevel!==0 (
-                        set "arg=\!QUOTE!!arg!\!QUOTE!"
-                    ) else if "!arg:~0,1!"=="@" (
-                        set "arg=\!QUOTE!@%~dp0!arg:~1!\!QUOTE!"
-                    ) else (
-                        set "arg=\!QUOTE!%~dp0!arg!\!QUOTE!"
-                    )
-                )
-
-                if !mergeargs!==1 (
-                    set "temp_args=!temp_args!,!arg!"
-                ) else if !mergeargs!==3 (
-                    set "temp_args=!temp_args!=!arg!"
-                    set "mergeargs=1"
-                ) else (
-                    set "temp_args=!temp_args! !arg!"
-                )
-
-                if "!arg:~0,2!" EQU "--" (
-                    set "mergeargs=2"
-                ) else if !mergeargs! GEQ 1 (
-                    if !mergeargs!==2 set "mergeargs=1"
-
-                    for %%x in (!args_with_value!) do (
-                        if /i "%%x"=="!arg!" (
-                            set "mergeargs=3"
-                        )
-                    )
-                )
-            )
-        )
+        set "temp_args=!line:%QUOTE%=\%QUOTE%!"
 
         if not "!temp_args!"=="" (
             set "args=!args! !temp_args!"
