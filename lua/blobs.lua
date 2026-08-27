@@ -25,7 +25,7 @@ for name, file in pairs{
 	tls_mail        = "tls_clienthello_sochi_park.bin",
 	quic_5ka        = "quic_initial_5ka_ru.bin",
 	quic_google     = "quic_initial_www_google_com.bin",
-	quic_4pda       = "quic_initial_4pda.to.bin",
+	quic_4pda       = "quic_initial_4pda_to.bin",
 	quic_steam      = "quic_initial_steamcommunity_com.bin",
 	quic_tencent    = "quic_initial_tencent_com.bin",
 	quic_rutube     = "quic_initial_rutube_ru.bin",
