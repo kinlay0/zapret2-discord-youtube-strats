@@ -85,13 +85,27 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --new ^
 
 --name="ip tls" ^
---filter-tcp=80,443,8443,%GameFilterTCP% ^
+--filter-tcp=80,443,8443 ^
 --ipset="%LISTS%ipset-all.txt" ^
 --hostlist-exclude="%LISTS%list-exclude.txt" ^
 --hostlist-exclude="%LISTS%list-exclude-user.txt" ^
 --ipset-exclude="%LISTS%ipset-exclude.txt" ^
 --ipset-exclude="%LISTS%ipset-exclude-user.txt" ^
 --lua-desync=syndata ^
+--new ^
+
+--name="gamefiltertcp" ^
+--filter-tcp=%GameFilterTCP% ^
+--ipset="%LISTS%ipset-all.txt" ^
+--ipset-exclude="%LISTS%ipset-exclude.txt" ^
+--ipset-exclude="%LISTS%ipset-exclude-user.txt" ^
+--out-range=-n4 ^
+--payload=tls_client_hello,unknown ^
+--lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000:payload=tls_client_hello,unknown ^
+--lua-desync=multisplit:pos=2:seqovl=664:seqovl_pattern=tls_onetrust ^
+--payload=http_req ^
+--lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
+--lua-desync=multisplit:pos=2:seqovl=664:seqovl_pattern=tls_onetrust ^
 --new ^
 
 --name="gamefilterudp" ^
