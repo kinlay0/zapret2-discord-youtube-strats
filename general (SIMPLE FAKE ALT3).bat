@@ -25,7 +25,12 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 
 --name="domain quic" ^
 --filter-udp=443 ^
---hostlist="%LISTS%list-google.txt" ^
+--hostlist="%LISTS%list-general.txt" ^
+--hostlist="%LISTS%list-general-user.txt" ^
+--hostlist-exclude="%LISTS%list-exclude.txt" ^
+--hostlist-exclude="%LISTS%list-exclude-user.txt" ^
+--ipset-exclude="%LISTS%ipset-exclude.txt" ^
+--ipset-exclude="%LISTS%ipset-exclude-user.txt" ^
 --payload=quic_initial ^
 --lua-desync=fake:blob=quic_google:repeats=6 ^
 --new ^
