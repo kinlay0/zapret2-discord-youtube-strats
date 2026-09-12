@@ -14,7 +14,7 @@ set "LISTS=%~dp0lists\"
 set "LUA=%~dp0lua\"
 cd /d %BIN%
 
-start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 ^
+start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=1 --ctrack-disable=0 --ipcache-hostname=1 --ipcache-lifetime=7200 ^
 --wf-tcp-in=80,443,2053,2083,2087,2096,8443,%GameFilterTCP% --wf-udp-in=443,19294-19344,50000-50100,%GameFilterUDP% ^
 --wf-tcp-out=80,443,2053,2083,2087,2096,8443,%GameFilterTCP% --wf-udp-out=443,19294-19344,50000-50100,%GameFilterUDP% ^
 
@@ -47,7 +47,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --hostlist-domains=discord.media ^
 --payload=tls_client_hello ^
 --lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
---lua-desync=multisplit:pos=2:seqovl=654:seqovl_pattern=tls_onetrust ^
+--lua-desync=multisplit:pos=2:seqovl=664:seqovl_pattern=tls_onetrust ^
 --new ^
 
 --name="youtube" ^
@@ -68,9 +68,12 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --ipset-exclude="%LISTS%ipset-exclude-user.txt" ^
 --payload=tls_client_hello ^
 --lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
---lua-desync=multisplit:pos=2:seqovl=654:seqovl_pattern=tls_onetrust ^
+--lua-desync=multisplit:pos=2:seqovl=664:seqovl_pattern=tls_onetrust ^
 --payload=http_req ^
---lua-desync=multisplit:pos=2:seqovl=654:seqovl_pattern=tls_onetrust ^
+--lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
+--lua-desync=http_domcase ^
+--lua-desync=http_hostcase:spell=hoSt ^
+--lua-desync=multisplit:pos=method+2,host+1 ^
 --new ^
 
 --name="ip quic" ^
@@ -91,7 +94,14 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --hostlist-exclude="%LISTS%list-exclude-user.txt" ^
 --ipset-exclude="%LISTS%ipset-exclude.txt" ^
 --ipset-exclude="%LISTS%ipset-exclude-user.txt" ^
---lua-desync=syndata ^
+--payload=tls_client_hello ^
+--lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
+--lua-desync=multisplit:pos=2:seqovl=664:seqovl_pattern=tls_onetrust ^
+--payload=http_req ^
+--lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
+--lua-desync=http_domcase ^
+--lua-desync=http_hostcase:spell=hoSt ^
+--lua-desync=multisplit:pos=method+2,host+1 ^
 --new ^
 
 --name="gamefiltertcp" ^
@@ -105,7 +115,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --lua-desync=multisplit:pos=2:seqovl=664:seqovl_pattern=tls_onetrust ^
 --payload=http_req ^
 --lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
---lua-desync=multisplit:pos=2:seqovl=664:seqovl_pattern=tls_onetrust ^
+--lua-desync=multisplit:pos=method+2,host+1 ^
 --new ^
 
 --name="gamefilterudp" ^
