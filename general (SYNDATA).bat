@@ -66,6 +66,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=1 --ctrack-disable=0 
 --hostlist-exclude="%LISTS%list-exclude-user.txt" ^
 --ipset-exclude="%LISTS%ipset-exclude.txt" ^
 --ipset-exclude="%LISTS%ipset-exclude-user.txt" ^
+--lua-desync=syndata:blob=tls_5ka:tls_mod=rnd ^
 --payload=tls_client_hello ^
 --lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
 --lua-desync=multisplit:pos=2:seqovl=664:seqovl_pattern=tls_onetrust ^
@@ -100,7 +101,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=1 --ctrack-disable=0 
 --payload=http_req ^
 --lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
 --lua-desync=http_domcase ^
---lua-desync=http_hostcase:spell=hoSt ^
+--lua-desync=http_hostcase:spell=host ^
 --lua-desync=multisplit:pos=method+2,host+1 ^
 --new ^
 
