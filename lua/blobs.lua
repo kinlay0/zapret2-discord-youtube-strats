@@ -24,6 +24,7 @@ for name, file in pairs{
 	tls_5ka         = "tls_clienthello_5ka_ru.bin",
 	tls_mail        = "tls_clienthello_sochi_park.bin",
 	tls_sferum      = "tls_clienthello_www_sferum_ru.bin",
+	tls_retext      = "tls_clienthello_retext_ai.bin",
 	quic_5ka        = "quic_initial_5ka_ru.bin",
 	quic_google     = "quic_initial_www_google_com.bin",
 	quic_4pda       = "quic_initial_4pda_to.bin",
