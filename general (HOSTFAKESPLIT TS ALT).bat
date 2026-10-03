@@ -46,7 +46,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --filter-tcp=2053,2083,2087,2096,8443 ^
 --hostlist-domains=discord.media ^
 --payload=tls_client_hello ^
---lua-desync=hostfakesplit:host=www.google.com ^
+--lua-desync=hostfakesplit:host=www.google.com:tcp_ts=-600000 ^
 --new ^
 
 --name="youtube" ^
