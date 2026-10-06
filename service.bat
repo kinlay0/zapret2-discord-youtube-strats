@@ -29,6 +29,12 @@ if "%~1"=="load_game_filter" (
 
 if "%~1"=="load_user_lists" (
     call :load_user_lists
+    call :cf_tunnel_start
+    exit /b
+)
+
+if "%~1"=="cf_tunnel_stop" (
+    call :cf_tunnel_stop
     exit /b
 )
 
@@ -61,6 +67,7 @@ cls
 call :ipset_switch_status
 call :game_switch_status
 call :check_updates_switch_status
+call :cf_tunnel_switch_status
 call :get_strategy_name
 
 set "menu_choice=null"
@@ -80,21 +87,22 @@ echo      4. Game Filter         [!GameFilterStatus!]
 echo      5. IPSet Filter        [!IPsetStatus!]
 echo      6. Auto-Update Check   [!CheckUpdatesStatus!]
 echo      7. Replace active fakes
+echo      8. CF Tunnel          [!CfTunnelStatus!]
 echo.
 echo   :: UPDATES
-echo      8. Update IPSet List
-echo      9. Update Hosts File
-echo      10. Check for Updates
+echo      9. Update IPSet List
+echo      10. Update Hosts File
+echo      11. Check for Updates
 echo.
 echo   :: TOOLS
-echo      11. Run Diagnostics
-echo      12. Run Tests
+echo      12. Run Diagnostics
+echo      13. Run Tests
 echo.
 echo   ----------------------------------------
 echo      0. Exit
 echo.
 
-set /p menu_choice=   Select option (0-12): 
+set /p menu_choice=   Select option (0-13): 
 
 if "%menu_choice%"=="1" goto service_install
 if "%menu_choice%"=="2" goto service_remove
@@ -103,11 +111,12 @@ if "%menu_choice%"=="4" goto game_switch
 if "%menu_choice%"=="5" goto ipset_switch
 if "%menu_choice%"=="6" goto check_updates_switch
 if "%menu_choice%"=="7" goto replace_active_fakes
-if "%menu_choice%"=="8" goto ipset_update
-if "%menu_choice%"=="9" goto hosts_update
-if "%menu_choice%"=="10" goto service_check_updates
-if "%menu_choice%"=="11" goto service_diagnostics
-if "%menu_choice%"=="12" goto run_tests
+if "%menu_choice%"=="8" goto cf_tunnel_switch
+if "%menu_choice%"=="9" goto ipset_update
+if "%menu_choice%"=="10" goto hosts_update
+if "%menu_choice%"=="11" goto service_check_updates
+if "%menu_choice%"=="12" goto service_diagnostics
+if "%menu_choice%"=="13" goto run_tests
 if "%menu_choice%"=="0" exit /b
 goto menu
 
@@ -128,6 +137,79 @@ if not exist "%LISTS_PATH%list-exclude-user.txt" (
 )
 
 exit /b
+
+
+:: CF TUNNEL ===========================
+:cf_tunnel_start
+if not exist "%~dp0utils\cf_tunnel.enabled" exit /b
+if not exist "%~dp0utils\cf-tunnel-settings.txt" exit /b
+if not exist "%~dp0utils\cf-tunnel.ps1" exit /b
+findstr /b /i /c:"url=wss://" "%~dp0utils\cf-tunnel-settings.txt" >nul 2>&1
+if errorlevel 1 exit /b
+call "%~dp0utils\cf-tunnel-run.bat"
+exit /b
+
+:cf_tunnel_task_create
+if not exist "%~dp0utils\cf_tunnel.enabled" exit /b
+findstr /b /i /c:"url=wss://" "%~dp0utils\cf-tunnel-settings.txt" >nul 2>&1
+if errorlevel 1 exit /b
+schtasks /create /tn "zapret-cf-tunnel" /tr "\"%~dp0utils\cf-tunnel-run.bat\"" /sc onlogon /ru "%USERDOMAIN%\%USERNAME%" /it /rl limited /f >nul 2>&1
+if errorlevel 1 (
+    call :PrintYellow "[?] could not create CF tunnel autostart task"
+) else (
+    call :PrintGreen "CF tunnel autostart at logon: enabled"
+)
+exit /b
+
+:cf_tunnel_task_delete
+schtasks /delete /tn "zapret-cf-tunnel" /f >nul 2>&1
+exit /b
+
+:cf_tunnel_stop
+if not exist "%~dp0utils\cf-tunnel.ps1" exit /b
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0utils\cf-tunnel.ps1" -Stop >nul 2>&1
+exit /b
+
+:cf_tunnel_switch_status
+set "cfTunnelFlag=%~dp0utils\cf_tunnel.enabled"
+if exist "%cfTunnelFlag%" (
+    set "CfTunnelStatus=enabled"
+) else (
+    set "CfTunnelStatus=disabled"
+)
+exit /b
+
+:cf_tunnel_switch
+chcp 437 > nul
+cls
+set "cfTunnelFlag=%~dp0utils\cf_tunnel.enabled"
+if not exist "%cfTunnelFlag%" (
+    echo Enabling CF tunnel...
+    echo ENABLED > "%cfTunnelFlag%"
+    findstr /b /i /c:"url=wss://" "%~dp0utils\cf-tunnel-settings.txt" >nul 2>&1
+    if errorlevel 1 (
+        call :PrintYellow "[?] url in utils\cf-tunnel-settings.txt is empty - fill in url and key first"
+    ) else (
+        sc query "zapret" >nul 2>&1
+        if !errorlevel!==0 call :cf_tunnel_task_create
+        tasklist /FI "IMAGENAME eq winws2.exe" | find /I "winws2.exe" > nul
+        if !errorlevel!==0 (
+            call :cf_tunnel_start
+            call :PrintGreen "CF Tunnel started"
+        ) else (
+            echo CF tunnel will start together with the next strategy you open
+        )
+    )
+) else (
+    echo Disabling CF tunnel...
+    del /f /q "%cfTunnelFlag%"
+    call :cf_tunnel_stop
+    call :cf_tunnel_task_delete
+    call :PrintGreen "CF tunnel stopped"
+)
+
+pause
+goto menu
 
 
 :: TCP ENABLE ==========================
@@ -193,7 +275,7 @@ exit /b
 :: REMOVE ==============================
 :service_remove
 cls
-chcp 65001 > nul
+chcp 437 > nul
 
 set SRVCNAME=zapret
 sc query "!SRVCNAME!" >nul 2>&1
@@ -208,6 +290,9 @@ tasklist /FI "IMAGENAME eq winws2.exe" | find /I "winws2.exe" > nul
 if !errorlevel!==0 (
     taskkill /IM winws2.exe /F > nul
 )
+
+call :cf_tunnel_stop
+call :cf_tunnel_task_delete
 
 sc query "WinDivert" >nul 2>&1
 if !errorlevel!==0 (
@@ -319,6 +404,9 @@ for %%F in ("!file%choice%!") do (
     set "filename=%%~nF"
 )
 reg add "HKLM\System\CurrentControlSet\Services\zapret" /v zapret-discord-youtube /t REG_SZ /d "!filename!" /f
+
+call :cf_tunnel_task_create
+call :cf_tunnel_start
 
 pause
 goto menu
