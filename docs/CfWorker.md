@@ -40,10 +40,10 @@ key=ваш ключ
 
 ### 3. включение
 
-1. запускаем `service.bat` -> **`13. CF Tunnel`** -> ставим `[enabled]`
+1. запускаем `service.bat` -> **`8. CF Tunnel`** -> ставим `[enabled]`
 2. запускаем любую стратегию `general*.bat` вручную или через **`1. Install Service`**, туннель стартует сам в свернутом окне `zapret: cf-tunnel`
 
-выключить: `service.bat` -> `13. CF Tunnel` (ставим `[disabled]`), либо `2. Remove Services`
+выключить: `service.bat` -> `8. CF Tunnel` (ставим `[disabled]`), либо `2. Remove Services`
 
 ### 4. проверка
 вводим в PowerShell:
