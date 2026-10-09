@@ -25,12 +25,17 @@ for name, file in pairs{
 	tls_mail        = "tls_clienthello_sochi_park.bin",
 	tls_sferum      = "tls_clienthello_www_sferum_ru.bin",
 	tls_retext      = "tls_clienthello_retext_ai.bin",
+	tls_awswaf      = "tls_clienthello_awswaf_com.bin"
+	tls_steamchat   = "tls_clienthello_steam_chat_com.bin"
+	tls_teamspeak   = "tls_clienthello_teamspeak_com.bin"
 	quic_5ka        = "quic_initial_5ka_ru.bin",
 	quic_google     = "quic_initial_www_google_com.bin",
 	quic_4pda       = "quic_initial_4pda_to.bin",
 	quic_steam      = "quic_initial_steamcommunity_com.bin",
 	quic_tencent    = "quic_initial_tencent_com.bin",
 	quic_rutube     = "quic_initial_rutube_ru.bin",
+	quic_lemana     = "quic_initial_lemana_pro.bin"
+	quic_steamchat  = "quic_initial_steam_chat_com.bin"
 	stun            = "stun.bin",
 	stun2           = "stun2.bin",
 	active_discord  = "ACTIVE_DISCORD_UDP.bin",
