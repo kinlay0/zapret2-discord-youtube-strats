@@ -49,6 +49,7 @@ key=ваш ключ
 <details>
 <summary><img src="https://cdn.simpleicons.org/deno/000000/ffffff" width="16" height="16" alt=""> <b>Deno Worker</b></summary>
 
+### UPD: cloudflare купил deno и он проработает 6 месяцев https://blog.cloudflare.com/deno-joins-cloudflare/, ладно
 
 альтернатива Cloudflare, клиент тот же, протокол тот же. плюс - сайты на Cloudflare (dash.cloudflare.com и т.д.) открываются
 
