@@ -1,12 +1,12 @@
 param([switch]$Stop)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
-$ListFile = Join-Path $Root 'lists\list-cfworker.txt'
-$LogFile = Join-Path $PSScriptRoot 'cf-tunnel.log'
+$ListFile = Join-Path $Root 'lists\list-proxy.txt'
+$LogFile = Join-Path $PSScriptRoot 'ws-proxy.log'
 $RegPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
 
 function Fail([string]$msg) {
-    Write-Host "cf-tunnel: $msg" -ForegroundColor Red
+    Write-Host "ws-proxy: $msg" -ForegroundColor Red
     try { "$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')) $msg" | Out-File $LogFile -Append -Encoding UTF8 } catch { }
     Read-Host 'Press Enter to close'
     exit 1
@@ -37,13 +37,13 @@ public class Ws
     public static async Task<Ws> Connect(Uri u, string ip)
     {
         Ws w = new Ws();
-        IPAddress[] addrs = ip != "" ? new[] { IPAddress.Parse(ip) } : await Tunnel.Timeout(Dns.GetHostAddressesAsync(u.Host), 8000, "DNS " + u.Host);
+        IPAddress[] addrs = ip != "" ? new[] { IPAddress.Parse(ip) } : await WsProxy.Timeout(Dns.GetHostAddressesAsync(u.Host), 8000, "DNS " + u.Host);
         Array.Sort(addrs, (a, b) => a.AddressFamily.CompareTo(b.AddressFamily));
         string errs = "";
         foreach (IPAddress a in addrs)
         {
             TcpClient c = new TcpClient(a.AddressFamily);
-            try { await Tunnel.Timeout(c.ConnectAsync(a, u.Port), 7000, "TCP"); w.tcp = c; break; }
+            try { await WsProxy.Timeout(c.ConnectAsync(a, u.Port), 7000, "TCP"); w.tcp = c; break; }
             catch (Exception e) { errs += " " + a + ": " + e.GetBaseException().Message + ";"; c.Close(); }
         }
         if (w.tcp == null) throw new Exception("TCP connect failed:" + errs);
@@ -54,19 +54,19 @@ public class Ws
             if (u.Scheme == "wss")
             {
                 SslStream ssl = new SslStream(w.st);
-                await Tunnel.Timeout(ssl.AuthenticateAsClientAsync(u.Host, null, SslProtocols.Tls12, false), 10000, "TLS " + u.Host);
+                await WsProxy.Timeout(ssl.AuthenticateAsClientAsync(u.Host, null, SslProtocols.Tls12, false), 10000, "TLS " + u.Host);
                 w.st = ssl;
             }
             byte[] key = new byte[16];
             lock (rnd) rnd.NextBytes(key);
-            await Tunnel.Write(w.st, "GET " + u.PathAndQuery + " HTTP/1.1\r\nHost: " + u.Host + "\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: " +
+            await WsProxy.Write(w.st, "GET " + u.PathAndQuery + " HTTP/1.1\r\nHost: " + u.Host + "\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: " +
                 Convert.ToBase64String(key) + "\r\nSec-WebSocket-Version: 13\r\n\r\n");
             byte[] hb = new byte[16384];
-            int hl = await Tunnel.Timeout(Tunnel.ReadHeader(w.st, hb), 15000, "Worker response");
-            int he = Tunnel.HeaderEnd(hb, hl);
+            int hl = await WsProxy.Timeout(WsProxy.ReadHeader(w.st, hb), 15000, "Server response");
+            int he = WsProxy.HeaderEnd(hb, hl);
             string status = Encoding.ASCII.GetString(hb, 0, he).Split('\r')[0];
             if (!status.Contains(" 101"))
-                throw new Exception("Worker answered '" + status + "' " + Encoding.UTF8.GetString(hb, he, Math.Min(hl - he, 120)).Trim());
+                throw new Exception("Server answered '" + status + "' " + Encoding.UTF8.GetString(hb, he, Math.Min(hl - he, 120)).Trim());
             w.pre = new byte[hl - he];
             Buffer.BlockCopy(hb, he, w.pre, 0, w.pre.Length);
             return w;
@@ -140,7 +140,7 @@ public class Ws
     }
 }
 
-public static class Tunnel
+public static class WsProxy
 {
     public static string Url = "", Key = "", Ip = "", Pac = "";
     public static int Port = 1080;
@@ -276,7 +276,7 @@ public static class Tunnel
             }
             target = host + ":" + port;
             bool tun = Match(host);
-            target = (tun ? "CF   " : "DIR  ") + target;
+            target = (tun ? "PRX  " : "DIR  ") + target;
             Stream rs = null;
             if (tun)
                 ws = await Ws.Connect(new Uri(Url + (Url.Contains("?") ? "&" : "?") + "k=" + Uri.EscapeDataString(Key) +
@@ -317,69 +317,81 @@ public static class Tunnel
 }
 '@
 
-$cfg = @{ url = ''; key = ''; port = '1080'; setpac = '1'; verbose = '0'; ip = '' }
-$ini = Join-Path $PSScriptRoot 'cf-tunnel-settings.txt'
+$cfg = @{ port = '1080'; setpac = '1'; verbose = '0' }
+$srv = @{ cloudflare = @{ url = ''; key = ''; ip = '' }; deno = @{ url = ''; key = ''; ip = '' } }
+$ini = Join-Path $PSScriptRoot 'ws-proxy-settings.txt'
 if (Test-Path $ini) {
+    $sec = ''
     foreach ($l in Get-Content $ini) {
-        if ($l -match '^\s*([a-z]+)\s*=\s*(.*?)\s*$') { $cfg[$Matches[1].ToLower()] = $Matches[2] }
+        if ($l -match '^\s*\[\s*([a-z]+)\s*\]\s*$') { $sec = $Matches[1].ToLower(); continue }
+        if ($l -match '^\s*([a-z_]+)\s*=\s*(.*?)\s*$') {
+            if ($srv.ContainsKey($sec)) { $srv[$sec][$Matches[1].ToLower()] = $Matches[2] }
+            else { $cfg[$Matches[1].ToLower()] = $Matches[2] }
+        }
     }
 }
 $Port = [int]$cfg.port
 $PacUrl = "http://127.0.0.1:$Port/proxy.pac"
 
-if (-not ('Tunnel' -as [type])) { Add-Type -TypeDefinition $cs -Language CSharp -IgnoreWarnings }
+if (-not ('WsProxy' -as [type])) { Add-Type -TypeDefinition $cs -Language CSharp -IgnoreWarnings }
 
 function Set-Pac([bool]$on) {
     $cur = (Get-ItemProperty $RegPath -Name AutoConfigURL -ErrorAction SilentlyContinue).AutoConfigURL
     if ($on) { Set-ItemProperty $RegPath -Name AutoConfigURL -Value "$PacUrl`?v=$([DateTime]::Now.Ticks)" }
     elseif ($cur -and $cur.StartsWith($PacUrl)) { Remove-ItemProperty $RegPath -Name AutoConfigURL }
-    [Tunnel]::RefreshProxy()
+    [WsProxy]::RefreshProxy()
 }
 
 if ($Stop) {
     Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like '*cf-tunnel.ps1*' -and $_.CommandLine -notlike '*-Stop*' } |
+        Where-Object { $_.ProcessId -ne $PID -and ($_.CommandLine -like '*ws-proxy.ps1*' -or $_.CommandLine -like '*-tunnel.ps1*') -and $_.CommandLine -notlike '*-Stop*' } |
         ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     try { Set-Pac $false } catch { }
-    Write-Host 'cf-tunnel stopped'
+    Write-Host 'ws-proxy stopped'
     exit 0
 }
 
-if (-not $cfg.url.StartsWith('wss://')) { Fail "url in utils\cf-tunnel-settings.txt is empty or not wss:// (now: '$($cfg.url)')" }
-if ($cfg.key -eq '' -or $cfg.key.StartsWith('CHANGE-ME')) { Fail 'set key in utils\cf-tunnel-settings.txt' }
+$Mode = 'cloudflare'
+$flag = Join-Path $PSScriptRoot 'ws_proxy.enabled'
+if ((Test-Path $flag) -and ((Get-Content $flag -Raw) -match 'deno')) { $Mode = 'deno' }
+$TunUrl = $srv[$Mode].url
+$TunKey = $srv[$Mode].key
+$TunIp = $srv[$Mode].ip
+if (-not $TunUrl.StartsWith('wss://')) { Fail "url in [$Mode] section of utils\ws-proxy-settings.txt is empty or not wss:// (now: '$TunUrl')" }
+if ($TunKey -eq '' -or $TunKey.StartsWith('CHANGE-ME')) { Fail "set key in [$Mode] section of utils\ws-proxy-settings.txt" }
 
-$mutex = New-Object System.Threading.Mutex($false, 'Local\zapret-cf-tunnel')
-if (-not $mutex.WaitOne(0)) { Write-Host 'cf-tunnel is already running'; Start-Sleep 3; exit 0 }
+$mutex = New-Object System.Threading.Mutex($false, 'Local\zapret-ws-proxy')
+if (-not $mutex.WaitOne(0)) { Write-Host 'ws-proxy is already running'; Start-Sleep 3; exit 0 }
 
 function Load-List {
     $d = @(Get-Content $ListFile -Encoding UTF8 | ForEach-Object { $_.Trim().ToLower().TrimEnd('.') } |
         Where-Object { $_ -and -not $_.StartsWith('#') } | Select-Object -Unique)
     if ($d.Count -eq 0) { return 0 }
-    [Tunnel]::Domains = [string[]]$d
+    [WsProxy]::Domains = [string[]]$d
     $js = ($d | ForEach-Object { "`"$_`"" }) -join ','
-    [Tunnel]::Pac = "function FindProxyForURL(url, host) {`n  host = host.toLowerCase();`n  var d = [$js];`n  for (var i = 0; i < d.length; i++)`n    if (host == d[i] || dnsDomainIs(host, '.' + d[i])) return 'PROXY 127.0.0.1:$Port; DIRECT';`n  return 'DIRECT';`n}`n"
+    [WsProxy]::Pac = "function FindProxyForURL(url, host) {`n  host = host.toLowerCase();`n  var d = [$js];`n  for (var i = 0; i < d.length; i++)`n    if (host == d[i] || dnsDomainIs(host, '.' + d[i])) return 'PROXY 127.0.0.1:$Port; DIRECT';`n  return 'DIRECT';`n}`n"
     return $d.Count
 }
 
 if (-not (Test-Path $ListFile)) { Fail "$ListFile not found" }
 $count = Load-List
-if ($count -eq 0) { Fail 'list-cfworker.txt is empty' }
+if ($count -eq 0) { Fail 'list-proxy.txt is empty' }
 $listTime = (Get-Item $ListFile).LastWriteTime
 
-[Tunnel]::Url = $cfg.url
-[Tunnel]::Key = $cfg.key
-[Tunnel]::Ip = $cfg.ip
-[Tunnel]::Port = $Port
-[Tunnel]::Verbose = ($cfg.verbose -eq '1')
+[WsProxy]::Url = $TunUrl
+[WsProxy]::Key = $TunKey
+[WsProxy]::Ip = $TunIp
+[WsProxy]::Port = $Port
+[WsProxy]::Verbose = ($cfg.verbose -eq '1')
 
-try { $task = [Tunnel]::Run() } catch { Fail "cannot listen on 127.0.0.1:$Port - $($_.Exception.GetBaseException().Message)" }
+try { $task = [WsProxy]::Run() } catch { Fail "cannot listen on 127.0.0.1:$Port - $($_.Exception.GetBaseException().Message)" }
 if ($cfg.setpac -eq '1') { Set-Pac $true }
 
-$host.UI.RawUI.WindowTitle = 'zapret: cf-tunnel'
-Write-Host "cf-tunnel running: proxy 127.0.0.1:$Port, PAC $PacUrl"
-Write-Host "worker: $($cfg.url)"
-Write-Host "domains via worker: $count (lists\list-cfworker.txt)"
-Write-Host 'close this window or run "cf-tunnel.ps1 -Stop" to stop'
+$host.UI.RawUI.WindowTitle = 'zapret: ws-proxy'
+Write-Host "ws-proxy running: proxy 127.0.0.1:$Port, PAC $PacUrl"
+Write-Host "$Mode`: $TunUrl"
+Write-Host "domains via proxy: $count (lists\list-proxy.txt)"
+Write-Host 'close this window or run "ws-proxy.ps1 -Stop" to stop'
 
 try {
     while (-not $task.Wait(2000)) {
@@ -389,7 +401,7 @@ try {
             $count = Load-List
             if ($count -gt 0) {
                 if ($cfg.setpac -eq '1') { Set-Pac $true }
-                Write-Host "$((Get-Date).ToString('HH:mm:ss')) list-cfworker.txt reloaded: $count domains"
+                Write-Host "$((Get-Date).ToString('HH:mm:ss')) list-proxy.txt reloaded: $count domains"
             }
         }
     }
