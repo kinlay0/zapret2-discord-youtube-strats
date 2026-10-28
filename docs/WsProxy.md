@@ -105,7 +105,7 @@ curl.exe -x http://127.0.0.1:1080 https://ipinfo.io/json
 | -------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `403 Forbidden`                  | ключ в `ws-proxy-settings.txt` не совпадает с `Value` переменной `KEY` в Worker'е                          |
 | `502` / `Connect failed`         | сайт стоит на Cloudflare или недоступен, уберите домен из `list-proxy.txt`                        |
-| `TLS ...`                        | стратегия zapret ломает соединение до Worker'а  добавить домен Worker'а в `list-exclude-user.txt` |
+| `TLS ...`                        | стратегия zapret ломает соединение до Worker'а, нужно добавить домен Worker'а в `list-exclude-user.txt` |
 | `TCP connect failed` / `DNS ...` | Worker недоступен у вашего провайдера, нужно добавить домен Worker'а в `list-general-user.txt`          |
 | в окне пусто, сайт не грузится   | браузер не использует PAC, перезапустите его                                                      |
 
