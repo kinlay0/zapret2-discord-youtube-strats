@@ -10,8 +10,8 @@ call service.bat load_user_lists
 echo:
 
 set "BIN=%~dp0bin\"
-set "LISTS=%~dp0lists\"
-set "LUA=%~dp0lua\"
+set "LISTS=..\lists\"
+set "LUA=..\lua\"
 cd /d "%BIN%"
 
 start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 ^
