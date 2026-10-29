@@ -401,8 +401,8 @@ set "args="
 set "capture=0"
 set "mergeargs=0"
 set "BIN=%~dp0bin\"
-set "LISTS=%~dp0lists\"
-set "LUA=%~dp0lua\"
+set "LISTS=..\lists\"
+set "LUA=..\lua\"
 set QUOTE="
 
 for /f "tokens=*" %%a in ('type "!selectedFile!"') do (
