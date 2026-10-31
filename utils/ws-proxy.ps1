@@ -25,6 +25,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+public class ServerAnswer : Exception
+{
+    public ServerAnswer(string msg) : base(msg) { }
+}
+
 public class Ws
 {
     Stream st;
@@ -66,7 +71,7 @@ public class Ws
             int he = WsProxy.HeaderEnd(hb, hl);
             string status = Encoding.ASCII.GetString(hb, 0, he).Split('\r')[0];
             if (!status.Contains(" 101"))
-                throw new Exception("Server answered '" + status + "' " + Encoding.UTF8.GetString(hb, he, Math.Min(hl - he, 120)).Trim());
+                throw new ServerAnswer("Server answered '" + status + "' " + Encoding.UTF8.GetString(hb, he, Math.Min(hl - he, 120)).Trim());
             w.pre = new byte[hl - he];
             Buffer.BlockCopy(hb, he, w.pre, 0, w.pre.Length);
             return w;
@@ -235,6 +240,7 @@ public static class WsProxy
             catch (Exception e)
             {
                 Drop(t);
+                if (e is ServerAnswer) continue;
                 bool show;
                 lock (downUntil) { show = DateTime.Now >= downUntil[i]; downUntil[i] = DateTime.Now.AddSeconds(60); }
                 if (show) Log(Names[i] + " didn't answer, trying " + Names[i + 1] + " (" + e.GetBaseException().Message + ")");
@@ -492,8 +498,8 @@ try {
     while (-not $task.Wait(2000)) {
         $t = (Get-Item $ListFile -ErrorAction SilentlyContinue).LastWriteTime
         if ($t -and $t -ne $listTime) {
+            try { $count = Load-List } catch { continue }
             $listTime = $t
-            $count = Load-List
             if ($count -gt 0) {
                 if ($cfg.setpac -eq '1') { Set-Pac $true }
                 Write-Host "$((Get-Date).ToString('HH:mm:ss')) list-proxy.txt reloaded: $count domains"

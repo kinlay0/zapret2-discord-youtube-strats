@@ -10,9 +10,9 @@ call service.bat load_user_lists
 echo:
 
 set "BIN=%~dp0bin\"
-set "LISTS=%~dp0lists\"
-set "LUA=%~dp0lua\"
-cd /d %BIN%
+set "LISTS=..\lists\"
+set "LUA=..\lua\"
+cd /d "%BIN%"
 
 start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 ^
 --wf-tcp-in=80,443,853,2053,2083,2087,2096,8443,%GameFilterTCP% --wf-udp-in=443,19294-19344,50000-50100,%GameFilterUDP% ^
