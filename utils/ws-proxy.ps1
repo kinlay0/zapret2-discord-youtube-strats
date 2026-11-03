@@ -411,7 +411,7 @@ $order = New-Object System.Collections.Generic.List[string]
 $ini = Join-Path $PSScriptRoot 'ws-proxy-settings.txt'
 if (Test-Path $ini) {
     $sec = ''
-    foreach ($l in Get-Content $ini) {
+    foreach ($l in Get-Content $ini -Encoding UTF8) {
         if ($l -match '^\s*\[\s*([a-z]+)\s*\]\s*$') { $sec = $Matches[1].ToLower(); if ($srv.ContainsKey($sec) -and -not $order.Contains($sec)) { $order.Add($sec) }; continue }
         if ($l -match '^\s*([a-z_]+)\s*=\s*(.*?)\s*$') {
             if ($srv.ContainsKey($sec)) { $srv[$sec][$Matches[1].ToLower()] = $Matches[2] }
@@ -444,8 +444,8 @@ $Servers = @()
 foreach ($n in $order) {
     $u = $srv[$n].url; $k = $srv[$n].key
     if ($u -eq '' -and $k -eq '') { continue }
-    if (-not $u.StartsWith('wss://')) { Write-Host "[$n] skipped: url is empty or not wss:// (now: '$u')" -ForegroundColor Yellow; continue }
-    if ($k -eq '' -or $k.StartsWith('CHANGE-ME')) { Write-Host "[$n] skipped: key is empty" -ForegroundColor Yellow; continue }
+    if (-not $u.StartsWith('wss://', [StringComparison]::OrdinalIgnoreCase)) { Write-Host "[$n] skipped: url is empty or not wss:// (now: '$u')" -ForegroundColor Yellow; continue }
+    if ($k -eq '' -or $k.StartsWith('CHANGE-ME', [StringComparison]::OrdinalIgnoreCase)) { Write-Host "[$n] skipped: key is empty" -ForegroundColor Yellow; continue }
     $Servers += $n
 }
 if ($Servers.Count -eq 0) { Fail 'no server is set up: fill in url and key in [cloudflare] and/or [deno] section of utils\ws-proxy-settings.txt' }
