@@ -123,7 +123,7 @@ curl.exe -x http://127.0.0.1:1080 https://ipinfo.io/json
 ```js
 import { connect } from "cloudflare:sockets";
 
-const KEY = "ваш secret (удалите меня и вставьте ваш ключ)";
+const KEY = "CHANGE-ME"; // замените CHANGE-ME на свой ключ или задайте такую переменную KEY в настройках
 const NAT64 = "2a01:4f9:c010:3f02:64::,2a00:1098:2b::,2a01:4f8:c2c:123f:64::,2602:fc59:b0:64::,2001:67c:2960:6464::";
 const TIMEOUT = 4000;
 
@@ -341,7 +341,7 @@ export default {
 # deno
 
 ```js
-const KEY = "ваш secret (удалите меня и вставьте ваш ключ)";
+const KEY = "CHANGE-ME"; // замените CHANGE-ME на свой ключ или задайте такую переменную KEY в настройках
 
 function toBytes(data) {
   if (data instanceof ArrayBuffer) return new Uint8Array(data);
