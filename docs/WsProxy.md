@@ -49,7 +49,7 @@ key=ваш ключ
 <details>
 <summary><img src="https://cdn.simpleicons.org/deno/000000/ffffff" width="16" height="16" alt=""> <b>Deno Worker</b></summary>
 
-### UPD: cloudflare купил deno и он проработает 6 месяцев https://blog.cloudflare.com/deno-joins-cloudflare/, ладно
+### UPD: Deno присоединяется к Cloudflare и Deno Deploy закроется примерно в апреле 2027 года https://deno.com/blog/cloudflare
 
 альтернатива Cloudflare, клиент тот же, протокол тот же. плюс - сайты на Cloudflare (dash.cloudflare.com и т.д.) открываются
 
@@ -64,7 +64,7 @@ url=wss://app-name.username.deno.net/
 key=ваш ключ
 ```
 
-6. домен Deno добавляем в `lists\list-exclude-user.txt` (или в `list-general-user.txt`, если без zapret не открывается, но у deno нет ограничений в РФ, так что добавляйте в `list-exclude.txt`)
+6. домен Deno добавляем в `lists\list-exclude-user.txt` (или в `list-general-user.txt`, если без zapret не открывается, но у deno нет ограничений в РФ, так что добавляйте в `list-exclude-user.txt`)
 7. нужные домены пишем в `lists\list-proxy.txt`
 
 </details>
