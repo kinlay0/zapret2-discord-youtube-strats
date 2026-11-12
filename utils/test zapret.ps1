@@ -585,9 +585,9 @@ if (-not $batFiles -or $batFiles.Count -eq 0) {
     exit 1
 }
 
-# Stop winws
+# Stop winws/winws2
 function Stop-Zapret {
-    Get-Process -Name "winws2" -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process -Name "winws", "winws2" -ErrorAction SilentlyContinue | Stop-Process -Force
 }
 
 # Capture/restore running winws2 instances to return user ipset/config
@@ -621,11 +621,11 @@ function Restore-WinwsSnapshot {
         # A quoted token is unambiguous; an unquoted one may contain spaces, so
         # fall back to the known executable path before guessing at whitespace.
         $processArgs = $null
-        if ($p.CommandLine -match '^\s*"[^"]*"\s*(.*)$') {
+        if ($p.CommandLine -match '(?s)^\s*"[^"]*"\s*(.*)$') {
             $processArgs = $matches[1].Trim()
         } elseif ($p.CommandLine -and $p.CommandLine.StartsWith($exe, [StringComparison]::OrdinalIgnoreCase)) {
             $processArgs = $p.CommandLine.Substring($exe.Length).Trim()
-        } elseif ($p.CommandLine -match '^\s*\S+\s*(.*)$') {
+        } elseif ($p.CommandLine -match '(?s)^\s*\S+\s*(.*)$') {
             $processArgs = $matches[1].Trim()
         }
 
