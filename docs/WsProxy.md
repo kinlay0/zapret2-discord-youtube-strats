@@ -45,7 +45,7 @@ key=ваш ключ
 
 <a id="deno-worker"></a>
 <details>
-<summary><img src="https://cdn.simpleicons.org/deno/000000/ffffff" width="16" height="16" alt=""> <b>Deno Worker</b></summary>
+<summary><img src="https://cdn.simpleicons.org/deno/000000/ffffff" width="16" height="16" alt=""> <b><del>Deno Worker</del> БОЛЬШЕ НЕ РАБОТАЕТ ДЛЯ НОВЫХ АККАУНТОВ</b></summary>
 
 ### UPD: Deno присоединяется к Cloudflare и Deno Deploy закроется примерно в апреле 2027 года https://deno.com/blog/cloudflare
 
