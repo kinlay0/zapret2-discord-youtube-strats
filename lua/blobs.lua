@@ -24,6 +24,7 @@ local blobs = {
 	tls_sferum      = "tls_clienthello_www_sferum_ru.bin",
 	tls_steamchat   = "tls_clienthello_steam_chat_com.bin",
 	tls_teamspeak   = "tls_clienthello_teamspeak_com.bin",
+    tls_firpo       = "tls_clienthello_firpo_ru.bin",
 }
 
 local folders = { "", "bin/" }
