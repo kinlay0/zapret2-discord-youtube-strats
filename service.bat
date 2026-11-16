@@ -205,6 +205,7 @@ exit /b
 :ws_proxy_stop
 if not exist "%~dp0utils\ws-proxy.ps1" exit /b
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0utils\ws-proxy.ps1" -Stop >nul 2>&1
+if errorlevel 1 call :PrintYellow "[?] WS proxy did not stop or PAC could not be restored"
 exit /b
 
 :ws_proxy_switch_status
@@ -285,6 +286,19 @@ if !errorlevel!==0 (
     call :PrintGreen "Bypass (winws2.exe) is RUNNING."
 ) else (
     call :PrintRed "Bypass (winws2.exe) is NOT running."
+)
+
+call :ws_proxy_mode
+echo WS Proxy: !WsProxyMode!
+if exist "%~dp0utils\ws-proxy.ps1" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0utils\ws-proxy.ps1" -Status >nul 2>&1
+    if !errorlevel!==0 (
+        call :PrintGreen "WS proxy is RUNNING."
+    ) else if !errorlevel!==1 (
+        call :PrintYellow "WS proxy is NOT running."
+    ) else (
+        call :PrintYellow "[?] Could not check WS proxy status."
+    )
 )
 
 pause
