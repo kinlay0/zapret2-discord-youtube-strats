@@ -1,4 +1,4 @@
-param([switch]$Stop)
+param([switch]$Stop, [switch]$Background, [switch]$Logs, [switch]$Status)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $ListFile = Join-Path $Root 'lists\list-proxy.txt'
@@ -7,11 +7,54 @@ $RegPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
 
 function Fail([string]$msg) {
     Write-Host "ws-proxy: $msg" -ForegroundColor Red
-    try { "$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')) $msg" | Out-File $LogFile -Append -Encoding UTF8 } catch { }
-    Read-Host 'Press Enter to close'
+    if ($logReady) { [WsProxy]::Log("ERR  $msg") }
+    else { try { "$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')) $msg" | Out-File $LogFile -Append -Encoding UTF8 } catch { } }
+    if (-not ($Background -or $Stop)) { Read-Host 'Press Enter to close' }
     exit 1
 }
 trap { Fail "$($_.Exception.Message) (line $($_.InvocationInfo.ScriptLineNumber))" }
+
+function Test-NamedMutex([string]$name) {
+    $m = $null
+    try { if (-not [System.Threading.Mutex]::TryOpenExisting($name, [ref]$m)) { return $false }; $m.Dispose() } catch [System.UnauthorizedAccessException] { }
+    return $true
+}
+
+if ($Status) {
+    try { $on = Test-NamedMutex 'Local\zapret-ws-proxy' } catch { Write-Host 'Cannot check WS proxy status.'; exit 2 }
+    if ($on) { Write-Host 'WS proxy is RUNNING.'; exit 0 } else { Write-Host 'WS proxy is NOT running.'; exit 1 }
+}
+
+if ($Logs) {
+    $host.UI.RawUI.WindowTitle = 'zapret: ws-proxy log'
+    # while this mutex exists, the proxy logs every connection
+    $debug = New-Object System.Threading.Mutex($false, 'Local\zapret-ws-proxy-debug')
+    Write-Host "Closing this window does not stop the proxy.`nPRX = proxy, DIR = direct.`n"
+    $buf = New-Object byte[] 65536; $gen = $null; $pos = 0L; $was = $null
+    while ($true) {
+        $on = Test-NamedMutex 'Local\zapret-ws-proxy'
+        if ($on -ne $was) { $was = $on; if ($on) { Write-Host 'WS proxy is running.' -ForegroundColor Green } else { Write-Host 'WS proxy is not running.' -ForegroundColor Yellow } }
+        try {
+            $f = [System.IO.File]::Open($LogFile, 'Open', 'Read', 'ReadWrite')
+            try {
+                # new creation time = proxy restarted, shorter file = log rotated: read from the beginning
+                $ct = [System.IO.File]::GetCreationTimeUtc($LogFile)
+                if ($ct -ne $gen -or $pos -gt $f.Length) { $gen = $ct; $pos = 0L }
+                [void]$f.Seek($pos, 'Begin')
+                $n = $f.Read($buf, 0, $buf.Length)
+                $e = if ($n -gt 0) { [Array]::LastIndexOf($buf, [byte]10, $n - 1) } else { -1 }
+                if ($e -ge 0) {
+                    foreach ($l in [System.Text.Encoding]::UTF8.GetString($buf, 0, $e).Split([char]10)) {
+                        $l = $l.TrimEnd([char]13)
+                        if ($l -cmatch ' (ERR|FAIL) ') { Write-Host $l -ForegroundColor Red } else { Write-Host $l }
+                    }
+                    $pos += $e + 1
+                }
+            } finally { $f.Dispose() }
+        } catch { }
+        Start-Sleep -Milliseconds 250
+    }
+}
 
 $cs = @'
 using System;
@@ -163,15 +206,48 @@ public static class WsProxy
 
     static object logLock = new object();
     static System.Collections.Generic.List<string> held = null;
+    static string logFile = null;
+    public static void InitLog(string path, string first)
+    {
+        lock (logLock)
+        {
+            using (new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)) { }
+            try { File.SetCreationTimeUtc(path, DateTime.UtcNow); } catch { } // tells the log window that a new log has started
+            logFile = path;
+            WriteLog(first);
+            Console.WriteLine(first);
+        }
+    }
+    static void WriteLog(string l)
+    {
+        try
+        {
+            if (l.Length > 8192) l = l.Substring(0, 8192) + "...";
+            byte[] b = Encoding.UTF8.GetBytes(l + "\r\n");
+            using (FileStream f = new FileStream(logFile, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
+            {
+                if (f.Length + b.Length > 5 << 20) f.SetLength(0);
+                f.Seek(0, SeekOrigin.End);
+                f.Write(b, 0, b.Length);
+            }
+        }
+        catch { } // logging must not break connections
+    }
+    static bool DebugOpen()
+    {
+        Mutex m;
+        try { if (!Mutex.TryOpenExisting(@"Local\zapret-ws-proxy-debug", out m)) return false; m.Dispose(); } catch (UnauthorizedAccessException) { }
+        return true;
+    }
     public static void Hold() { lock (logLock) held = new System.Collections.Generic.List<string>(); }
     public static void Release()
     {
         lock (logLock) { foreach (string l in held) Console.WriteLine(l); held = null; }
     }
-    static void Log(string s)
+    public static void Log(string s)
     {
         string l = DateTime.Now.ToString("HH:mm:ss") + " " + s;
-        lock (logLock) { if (held != null) held.Add(l); else Console.WriteLine(l); }
+        lock (logLock) { if (logFile != null) WriteLog(l); if (held != null) held.Add(l); else Console.WriteLine(l); }
     }
 
     public static async Task<T> Timeout<T>(Task<T> t, int ms, string what)
@@ -376,7 +452,7 @@ public static class WsProxy
                 await Timeout(remote.ConnectAsync(host, port), 15000, "connect");
                 rs = remote.GetStream();
             }
-            if (Verbose) Log(target);
+            if (Verbose || DebugOpen()) Log(target);
             if (connect) await Write(ns, "HTTP/1.1 200 Connection Established\r\n\r\n");
             ok = true;
             if (tun)
@@ -424,18 +500,31 @@ $PacUrl = "http://127.0.0.1:$Port/proxy.pac"
 
 if (-not ('WsProxy' -as [type])) { Add-Type -TypeDefinition $cs -Language CSharp -IgnoreWarnings }
 
-function Set-Pac([bool]$on) {
+$PacKey = 'HKCU:\Software\zapret-ws-proxy'
+function Set-Pac([bool]$on, [bool]$reload) {
     $cur = (Get-ItemProperty $RegPath -Name AutoConfigURL -ErrorAction SilentlyContinue).AutoConfigURL
+    $mine = "$cur" -match '^http://127\.0\.0\.1:\d+/proxy\.pac\?v=\d+$'
+    if ($reload -and -not $mine) { [WsProxy]::Log('PAC setting changed externally, not overwriting it'); return }
+    if ($on -and -not $mine) {
+        # remember the previous PAC, so it can be restored even after a crash
+        Remove-Item $PacKey -ErrorAction SilentlyContinue
+        [void](New-Item $PacKey -Force)
+        if ($null -ne $cur) { [void](New-ItemProperty $PacKey -Name PrevPac -Value $cur -PropertyType String -Force) }
+    }
     if ($on) { Set-ItemProperty $RegPath -Name AutoConfigURL -Value "$PacUrl`?v=$([DateTime]::Now.Ticks)" }
-    elseif ($cur -and $cur.StartsWith($PacUrl)) { Remove-ItemProperty $RegPath -Name AutoConfigURL }
+    elseif ($mine) {
+        $prev = (Get-ItemProperty $PacKey -Name PrevPac -ErrorAction SilentlyContinue).PrevPac
+        if ($null -ne $prev) { Set-ItemProperty $RegPath -Name AutoConfigURL -Value $prev } else { Remove-ItemProperty $RegPath -Name AutoConfigURL }
+    }
+    if (-not $on) { Remove-Item $PacKey -ErrorAction SilentlyContinue }
     [WsProxy]::RefreshProxy()
 }
 
 if ($Stop) {
-    Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.ProcessId -ne $PID -and ($_.CommandLine -like '*ws-proxy.ps1*' -or $_.CommandLine -like '*-tunnel.ps1*') -and $_.CommandLine -notlike '*-Stop*' } |
-        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-    try { Set-Pac $false } catch { }
+    # while this mutex exists, the running proxy exits by itself
+    $request = New-Object System.Threading.Mutex($false, 'Local\zapret-ws-proxy-stop')
+    for ($i = 0; (Test-NamedMutex 'Local\zapret-ws-proxy'); $i++) { if ($i -ge 200) { Fail 'did not stop in 50 s' }; Start-Sleep -Milliseconds 250 }
+    Set-Pac $false
     Write-Host 'ws-proxy stopped'
     exit 0
 }
@@ -452,6 +541,7 @@ if ($Servers.Count -eq 0) { Fail 'no server is set up: fill in url and key in [c
 
 $mutex = New-Object System.Threading.Mutex($false, 'Local\zapret-ws-proxy')
 if (-not $mutex.WaitOne(0)) { Write-Host 'ws-proxy is already running'; Start-Sleep 3; exit 0 }
+if (Test-NamedMutex 'Local\zapret-ws-proxy-stop') { Write-Host 'ws-proxy is stopping'; exit 0 }
 
 function Load-List {
     $d = @(Get-Content $ListFile -Encoding UTF8 | ForEach-Object { $_.Trim().ToLower().TrimEnd('.') } |
@@ -476,37 +566,32 @@ $listTime = (Get-Item $ListFile).LastWriteTime
 [WsProxy]::Verbose = ($cfg.verbose -eq '1')
 
 try { $task = [WsProxy]::Run() } catch { Fail "cannot listen on 127.0.0.1:$Port - $($_.Exception.GetBaseException().Message)" }
-if ($cfg.setpac -eq '1') { Set-Pac $true }
+try { [WsProxy]::InitLog($LogFile, "ws-proxy running: proxy 127.0.0.1:$Port, PAC $PacUrl"); $logReady = $true } catch { Fail "cannot create log: $($_.Exception.Message)" }
+try {
+    if ($cfg.setpac -eq '1') { Set-Pac $true }
 
 $host.UI.RawUI.WindowTitle = 'zapret: ws-proxy'
-Write-Host "ws-proxy running: proxy 127.0.0.1:$Port, PAC $PacUrl"
-for ($i = 0; $i -lt $Servers.Count; $i++) { Write-Host "$(if ($i -eq 0) { 'main' } else { 'fallback' }) $($Servers[$i]): $($srv[$Servers[$i]].url)" }
-Write-Host "domains via proxy: $count (lists\list-proxy.txt)"
-Write-Host 'close this window or run "ws-proxy.ps1 -Stop" to stop'
-Write-Host ''
+for ($i = 0; $i -lt $Servers.Count; $i++) { [WsProxy]::Log("$(if ($i -eq 0) { 'main' } else { 'fallback' }): $($Servers[$i])") }
+[WsProxy]::Log("domains via proxy: $count (lists\list-proxy.txt)")
+[WsProxy]::Log('run "ws-proxy.ps1 -Stop" to stop')
 [WsProxy]::Hold()
 try {
-    for ($i = 0; $i -lt $Servers.Count; $i++) {
-        Write-Host "checking $($Servers[$i])... " -NoNewline
-        $res = [WsProxy]::Check($i)
-        Write-Host $res -ForegroundColor $(if ($res.StartsWith('ok')) { 'Green' } else { 'Red' })
-    }
+    for ($i = 0; $i -lt $Servers.Count; $i++) { [WsProxy]::Log("checking $($Servers[$i])... $([WsProxy]::Check($i))") }
     Write-Host ''
 } finally { [WsProxy]::Release() }
 
-try {
-    while (-not $task.Wait(2000)) {
+    while (-not $task.Wait(2000) -and -not (Test-NamedMutex 'Local\zapret-ws-proxy-stop')) {
         $t = (Get-Item $ListFile -ErrorAction SilentlyContinue).LastWriteTime
         if ($t -and $t -ne $listTime) {
             try { $count = Load-List } catch { continue }
             $listTime = $t
             if ($count -gt 0) {
-                if ($cfg.setpac -eq '1') { Set-Pac $true }
-                Write-Host "$((Get-Date).ToString('HH:mm:ss')) list-proxy.txt reloaded: $count domains"
-            }
+                if ($cfg.setpac -eq '1') { Set-Pac $true $true }
+                [WsProxy]::Log("list-proxy.txt reloaded: $count domains")
+            } else { [WsProxy]::Log('list-proxy.txt is empty, keeping the previous list') }
         }
     }
     if ($task.IsFaulted) { Fail "crashed: $($task.Exception.GetBaseException().Message)" }
 } finally {
-    if ($cfg.setpac -eq '1') { try { Set-Pac $false } catch { } }
+    if ($cfg.setpac -eq '1') { try { Set-Pac $false } catch { [WsProxy]::Log("ERR  cannot restore PAC: $($_.Exception.Message)") } }
 }
