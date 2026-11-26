@@ -55,7 +55,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --hostlist="%LISTS%list-google.txt" ^
 --payload=tls_client_hello ^
 --lua-desync=fake:blob=tls_google:tls_mod=rnd,dupsid:repeats=6:tcp_ts=-600000 ^
---lua-desync=multidisorder:pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1 ^
+--lua-desync=multidisorder:pos=2,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1 ^
 --new ^
 
 --name="domain tls" ^

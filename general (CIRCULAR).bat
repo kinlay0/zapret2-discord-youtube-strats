@@ -56,7 +56,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --lua-desync=fake:blob=tls_google:tls_mod=rnd,padencap:repeats=4:badsum:ip_id=zero:strategy=1 ^
 --lua-desync=multisplit:pos=sniext+1,midsld:seqovl=1:ip_id=zero:strategy=1 ^
 --lua-desync=fake:blob=tls_google:tls_mod=rnd,dupsid:repeats=6:tcp_ts=-600000:ip_id=zero:strategy=2 ^
---lua-desync=multidisorder:pos=1,midsld:ip_id=zero:strategy=2 ^
+--lua-desync=multidisorder:pos=2,midsld:ip_id=zero:strategy=2 ^
 --new ^
 
 --name="youtube" ^
@@ -93,7 +93,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --lua-desync=fake:blob=tls_google:tls_mod=rnd,padencap:repeats=4:badsum:ip_id=zero:strategy=1 ^
 --lua-desync=multisplit:pos=sniext+1,midsld:seqovl=1:ip_id=zero:strategy=1 ^
 --lua-desync=fake:blob=tls_google:tls_mod=rnd,dupsid:repeats=6:tcp_ts=-600000:ip_id=zero:strategy=2 ^
---lua-desync=multidisorder:pos=1,midsld:ip_id=zero:strategy=2 ^
+--lua-desync=multidisorder:pos=2,midsld:ip_id=zero:strategy=2 ^
 --payload=http_req ^
 --lua-desync=fake:blob=tls_steamchat:repeats=8:tcp_ts=-600000:strategy=1 ^
 --lua-desync=multisplit:pos=2:strategy=1 ^

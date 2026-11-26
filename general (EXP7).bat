@@ -69,7 +69,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --payload=tls_client_hello ^
 --lua-desync=fake:blob=stun2:repeats=8:tcp_ts=-600000 ^
 --lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
---lua-desync=multisplit:pos=1:seqovl=664:seqovl_pattern=tls_onetrust ^
+--lua-desync=multisplit:pos=2:seqovl=664:seqovl_pattern=tls_onetrust ^
 --payload=http_req ^
 --lua-desync=fake:blob=stun:repeats=6:tcp_ts=-600000 ^
 --lua-desync=fake:blob=tls_sferum:repeats=6:tcp_ts=-600000 ^
@@ -97,7 +97,7 @@ start "zapret: %~n0" /min "%BIN%winws2.exe" --wf-tcp-empty=0 --ctrack-disable=0 
 --payload=tls_client_hello ^
 --lua-desync=fake:blob=stun2:repeats=8:tcp_ts=-600000 ^
 --lua-desync=fake:blob=tls_onetrust:repeats=8:tcp_ts=-600000 ^
---lua-desync=multisplit:pos=1:seqovl=664:seqovl_pattern=tls_onetrust ^
+--lua-desync=multisplit:pos=2:seqovl=664:seqovl_pattern=tls_onetrust ^
 --payload=http_req ^
 --lua-desync=fake:blob=stun:repeats=6:tcp_ts=-600000 ^
 --lua-desync=fake:blob=tls_sferum:repeats=6:tcp_ts=-600000 ^
